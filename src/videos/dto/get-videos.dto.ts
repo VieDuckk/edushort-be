@@ -26,6 +26,6 @@ export class GetVideosDto {
   categoryId?: number;
 
   @IsOptional()
-  @IsIn(['latest', 'oldest', 'popular'])
-  sort: 'latest' | 'oldest' | 'popular' = 'latest';
+  @IsIn(['latest', 'oldest', 'popular', 'random'])
+  sort: 'latest' | 'oldest' | 'popular' | 'random' = 'random';
 }

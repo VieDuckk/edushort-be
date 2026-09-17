@@ -43,19 +43,12 @@ export class VideosService {
         : {}),
     };
 
-    const orderBy: Prisma.VideoOrderByWithRelationInput =
-      sort === 'oldest'
-        ? { createdAt: 'asc' }
-        : sort === 'popular'
-          ? { views: 'desc' }
-          : { createdAt: 'desc' };
+    let videos: any[] = [];
+    let total = 0;
 
-    const [videos, total] = await Promise.all([
-      this.prisma.video.findMany({
+    if (sort === 'random') {
+      const allVideos = await this.prisma.video.findMany({
         where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy,
         include: {
           author: {
             select: {
@@ -67,12 +60,54 @@ export class VideosService {
           },
           category: true,
         },
-      }),
+      });
 
-      this.prisma.video.count({
-        where,
-      }),
-    ]);
+      total = allVideos.length;
+
+      // Fisher-Yates shuffle
+      const shuffled = [...allVideos];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      const startIndex = (page - 1) * limit;
+      videos = shuffled.slice(startIndex, startIndex + limit);
+    } else {
+      const orderBy: Prisma.VideoOrderByWithRelationInput =
+        sort === 'oldest'
+          ? { createdAt: 'asc' }
+          : sort === 'popular'
+            ? { views: 'desc' }
+            : { createdAt: 'desc' };
+
+      const [vList, count] = await Promise.all([
+        this.prisma.video.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy,
+          include: {
+            author: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                avatarUrl: true,
+              },
+            },
+            category: true,
+          },
+        }),
+
+        this.prisma.video.count({
+          where,
+        }),
+      ]);
+
+      videos = vList;
+      total = count;
+    }
 
     const data = videos.map((video) => ({
       ...video,

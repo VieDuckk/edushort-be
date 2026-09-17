@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { QuizService } from './quiz.service';
 import { PrismaService } from 'prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 describe('QuizService', () => {
   let service: QuizService;
@@ -20,6 +21,10 @@ describe('QuizService', () => {
     },
   };
 
+  const storageServiceMock = {
+    getPublicUrl: jest.fn((key: string) => `https://cdn.test/${key}`),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -29,6 +34,10 @@ describe('QuizService', () => {
         {
           provide: PrismaService,
           useValue: prismaMock,
+        },
+        {
+          provide: StorageService,
+          useValue: storageServiceMock,
         },
       ],
     }).compile();
@@ -157,7 +166,13 @@ describe('QuizService', () => {
           { id: 2, isCorrect: false },
         ],
       });
-      const matchingVideo = { id: 2, title: 'Math Intro', categoryId: 10 };
+      const matchingVideo = {
+        id: 2,
+        title: 'Math Intro',
+        categoryId: 10,
+        videoKey: 'videos/test.mp4',
+        thumbnailKey: 'thumbnails/test.jpg',
+      };
       prismaMock.video.findMany.mockResolvedValue([matchingVideo]);
       prismaMock.quizAnswer.create.mockResolvedValue({});
 
@@ -169,7 +184,11 @@ describe('QuizService', () => {
 
       expect(result.isCorrect).toBe(false);
       expect(result.correctOptionId).toBe(1);
-      expect(result.videoToReview).toEqual(matchingVideo);
+      expect(result.videoToReview).toEqual({
+        ...matchingVideo,
+        videoUrl: 'https://cdn.test/videos/test.mp4',
+        thumbnailUrl: 'https://cdn.test/thumbnails/test.jpg',
+      });
       expect(prismaMock.quizAnswer.create).toHaveBeenCalledWith({
         data: {
           userId: 1,
@@ -183,14 +202,35 @@ describe('QuizService', () => {
   });
 
   describe('getReviewList', () => {
-    it('should return review list for user', async () => {
+    it('should return review list for user with formatted videoToReview', async () => {
+      const matchingVideo = {
+        id: 2,
+        title: 'Math Intro',
+        videoKey: 'videos/test.mp4',
+        thumbnailKey: 'thumbnails/test.jpg',
+      };
       const reviewItems = [
-        { id: 1, isCorrect: false, questionId: 1, videoToReviewId: 2 },
+        {
+          id: 1,
+          isCorrect: false,
+          questionId: 1,
+          videoToReviewId: 2,
+          videoToReview: matchingVideo,
+        },
       ];
       prismaMock.quizAnswer.findMany.mockResolvedValue(reviewItems);
 
       const result = await service.getReviewList(1);
-      expect(result).toEqual(reviewItems);
+      expect(result).toEqual([
+        {
+          ...reviewItems[0],
+          videoToReview: {
+            ...matchingVideo,
+            videoUrl: 'https://cdn.test/videos/test.mp4',
+            thumbnailUrl: 'https://cdn.test/thumbnails/test.jpg',
+          },
+        },
+      ]);
       expect(prismaMock.quizAnswer.findMany).toHaveBeenCalledWith({
         where: { userId: 1, isCorrect: false },
         include: {
@@ -203,3 +243,4 @@ describe('QuizService', () => {
     });
   });
 });
+

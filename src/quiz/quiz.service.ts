@@ -4,11 +4,26 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
 
 @Injectable()
 export class QuizService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
+
+  private formatVideo(video: any) {
+    if (!video) return null;
+    return {
+      ...video,
+      videoUrl: this.storageService.getPublicUrl(video.videoKey),
+      thumbnailUrl: video.thumbnailKey
+        ? this.storageService.getPublicUrl(video.thumbnailKey)
+        : null,
+    };
+  }
 
   async getRandomQuestion(videoIds: number[]) {
     if (!videoIds || videoIds.length === 0) {
@@ -85,10 +100,10 @@ export class QuizService {
 
     const isCorrect = selectedOption.isCorrect;
     let videoToReviewId: number | null = null;
-    let videoToReview: any = null;
+    let rawVideoToReview: any = null;
 
     if (!isCorrect && dto.videoIds && dto.videoIds.length > 0) {
-      const matchingVideos = await this.prisma.video.findMany({
+      let matchingVideos = await this.prisma.video.findMany({
         where: {
           id: { in: dto.videoIds },
           categoryId: question.categoryId,
@@ -96,11 +111,30 @@ export class QuizService {
         include: { category: true },
       });
 
+      if (matchingVideos.length === 0) {
+        matchingVideos = await this.prisma.video.findMany({
+          where: {
+            id: { in: dto.videoIds },
+          },
+          include: { category: true },
+        });
+      }
+
+      if (matchingVideos.length === 0) {
+        matchingVideos = await this.prisma.video.findMany({
+          where: {
+            categoryId: question.categoryId,
+          },
+          include: { category: true },
+          take: 5,
+        });
+      }
+
       if (matchingVideos.length > 0) {
         const randomVideo =
           matchingVideos[Math.floor(Math.random() * matchingVideos.length)];
         videoToReviewId = randomVideo.id;
-        videoToReview = randomVideo;
+        rawVideoToReview = randomVideo;
       }
     }
 
@@ -119,12 +153,12 @@ export class QuizService {
     return {
       isCorrect,
       correctOptionId: correctOption?.id,
-      videoToReview,
+      videoToReview: this.formatVideo(rawVideoToReview),
     };
   }
 
   async getReviewList(userId: number) {
-    return this.prisma.quizAnswer.findMany({
+    const list = await this.prisma.quizAnswer.findMany({
       where: {
         userId,
         isCorrect: false,
@@ -147,5 +181,11 @@ export class QuizService {
         createdAt: 'desc',
       },
     });
+
+    return list.map((item) => ({
+      ...item,
+      videoToReview: this.formatVideo(item.videoToReview),
+    }));
   }
 }
+
