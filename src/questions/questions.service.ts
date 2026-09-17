@@ -101,6 +101,10 @@ export class QuestionsService {
   async remove(id: number) {
     await this.findById(id);
 
+    await this.prisma.quizAnswer.deleteMany({
+      where: { questionId: id },
+    });
+
     await this.prisma.question.delete({
       where: { id },
     });

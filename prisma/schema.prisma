@@ -104,19 +104,19 @@ model QuestionOption {
 model QuizAnswer {
   id     Int  @id @default(autoincrement())
 
-  user   User @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
 
-  question   Question @relation(fields: [questionId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionId Int
 
-  selectedOption   QuestionOption @relation(fields: [selectedOptionId], references: [id])
+  selectedOption   QuestionOption @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
   selectedOptionId Int
 
   isCorrect Boolean
 
   // 1 trong 5 video vừa xem có cùng category với câu hỏi (chỉ set khi sai)
-  videoToReview   Video? @relation(fields: [videoToReviewId], references: [id])
+  videoToReview   Video? @relation(fields: [videoToReviewId], references: [id], onDelete: SetNull)
   videoToReviewId Int?
 
   createdAt DateTime @default(now())
