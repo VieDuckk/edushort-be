@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: edushort-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: edushort
+      POSTGRES_PASSWORD: edushort_dev
+      POSTGRES_DB: edushort
+    ports:
+      - "5432:5432"
+    volumes:
+      - edushort_pgdata:/var/lib/postgresql/data
+
+volumes:
+  edushort_pgdata:

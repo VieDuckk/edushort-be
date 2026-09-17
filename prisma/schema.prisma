@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VideoStatus {
+  PROCESSING
+  PUBLISHED
+  FAILED
+}
+
+enum UserRole {
+  USER
+  OWNER
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  name         String?
+  avatarUrl    String?
+  role         UserRole @default(USER)
+
+  videos      Video[]
+  quizAnswers QuizAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  videos    Video[]
+  questions Question[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Video {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String?
+
+  // File nằm trên Cloudflare R2
+  videoKey     String
+  thumbnailKey String?
+
+  duration Int?
+  fileSize BigInt?
+
+  status VideoStatus @default(PROCESSING)
+  views  Int         @default(0)
+
+  author     User      @relation(fields: [authorId], references: [id])
+  authorId   Int
+
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId Int?
+
+  // Video được gợi ý xem lại khi user trả lời sai câu hỏi cùng category
+  reviewAnswers QuizAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Quiz ────────────────────────────────────────────────────────────────────
+
+model Question {
+  id         Int    @id @default(autoincrement())
+  content    String
+
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId Int
+
+  options QuestionOption[]
+  answers QuizAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model QuestionOption {
+  id        Int     @id @default(autoincrement())
+  label     String  // "A" | "B" | "C" | "D"
+  content   String
+  isCorrect Boolean @default(false)
+
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId Int
+
+  answers QuizAnswer[]
+}
+
+model QuizAnswer {
+  id     Int  @id @default(autoincrement())
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId Int
+
+  selectedOption   QuestionOption @relation(fields: [selectedOptionId], references: [id])
+  selectedOptionId Int
+
+  isCorrect Boolean
+
+  // 1 trong 5 video vừa xem có cùng category với câu hỏi (chỉ set khi sai)
+  videoToReview   Video? @relation(fields: [videoToReviewId], references: [id])
+  videoToReviewId Int?
+
+  createdAt DateTime @default(now())
+}
