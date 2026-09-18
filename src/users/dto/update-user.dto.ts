@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Length } from 'class-validator';
+import { IsOptional, IsString, IsUrl, Length } from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -7,6 +7,9 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl({
+    require_protocol: true,
+    protocols: ['http', 'https'],
+  }, { message: 'avatarUrl phải là URL hợp lệ (http/https). Vui lòng upload ảnh lên storage trước.' })
   avatarUrl?: string;
 }

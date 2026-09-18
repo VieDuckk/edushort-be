@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { UserRole } from '@prisma/client';
+
 import { PrismaService } from 'prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 
@@ -71,8 +73,14 @@ export class UsersService {
     return user;
   }
 
-  async update(id: number, data: UpdateUserDto, userId: number) {
-    if (id !== userId) {
+  async update(
+    id: number,
+    data: UpdateUserDto,
+    userId: number,
+    userRole: UserRole = UserRole.USER,
+  ) {
+    // OWNER có thể sửa bất kỳ tài khoản nào; USER chỉ sửa của chính mình
+    if (userRole !== UserRole.OWNER && id !== userId) {
       throw new ForbiddenException('You can only update your own profile');
     }
 

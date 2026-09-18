@@ -42,6 +42,6 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: any,
   ) {
-    return this.usersService.update(id, dto, user.userId);
+    return this.usersService.update(id, dto, user.userId, user.role);
   }
 }
