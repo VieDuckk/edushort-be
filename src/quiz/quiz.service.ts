@@ -30,37 +30,49 @@ export class QuizService {
       throw new NotFoundException('No questions available for watched videos');
     }
 
-    const videos = await this.prisma.video.findMany({
-      where: { id: { in: videoIds } },
-      select: { id: true, categoryId: true },
-    });
-
-    const categoryIds = [
-      ...new Set(
-        videos
-          .map((v) => v.categoryId)
-          .filter((catId): catId is number => catId !== null),
-      ),
-    ];
-
-    if (categoryIds.length === 0) {
-      throw new NotFoundException('No questions available for watched videos');
-    }
-
-    const questions = await this.prisma.question.findMany({
-      where: { categoryId: { in: categoryIds } },
+    // Ưu tiên 1: Tìm câu hỏi được gắn trực tiếp với các video đã xem
+    const linkedQuestions = await this.prisma.question.findMany({
+      where: { videoId: { in: videoIds } },
       include: {
         options: true,
         category: true,
       },
     });
 
-    if (questions.length === 0) {
+    let questionPool = linkedQuestions;
+
+    // Fallback: Nếu không có quiz gắn với video, tìm theo category (logic cũ)
+    if (questionPool.length === 0) {
+      const videos = await this.prisma.video.findMany({
+        where: { id: { in: videoIds } },
+        select: { id: true, categoryId: true },
+      });
+
+      const categoryIds = [
+        ...new Set(
+          videos
+            .map((v) => v.categoryId)
+            .filter((catId): catId is number => catId !== null),
+        ),
+      ];
+
+      if (categoryIds.length > 0) {
+        questionPool = await this.prisma.question.findMany({
+          where: { categoryId: { in: categoryIds } },
+          include: {
+            options: true,
+            category: true,
+          },
+        });
+      }
+    }
+
+    if (questionPool.length === 0) {
       throw new NotFoundException('No questions available for watched videos');
     }
 
     const randomQuestion =
-      questions[Math.floor(Math.random() * questions.length)];
+      questionPool[Math.floor(Math.random() * questionPool.length)];
 
     // Shuffle options & sanitize isCorrect
     const shuffledOptions = [...randomQuestion.options]

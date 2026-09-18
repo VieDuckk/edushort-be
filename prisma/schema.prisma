@@ -66,6 +66,9 @@ model Video {
   category   Category? @relation(fields: [categoryId], references: [id])
   categoryId Int?
 
+  // Quiz gắn liền với video này (1-1, optional)
+  quiz Question?
+
   // Video được gợi ý xem lại khi user trả lời sai câu hỏi cùng category
   reviewAnswers QuizAnswer[]
 
@@ -81,6 +84,10 @@ model Question {
 
   category   Category @relation(fields: [categoryId], references: [id])
   categoryId Int
+
+  // Video gắn liền với câu hỏi này (1-1, optional)
+  video   Video? @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  videoId Int?   @unique
 
   options QuestionOption[]
   answers QuizAnswer[]

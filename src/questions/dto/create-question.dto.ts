@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   ValidateNested,
   ArrayMinSize,
@@ -30,6 +31,10 @@ export class CreateQuestionDto {
 
   @IsInt()
   categoryId: number;
+
+  @IsOptional()
+  @IsInt()
+  videoId?: number;
 
   @IsArray()
   @ArrayMinSize(4)
